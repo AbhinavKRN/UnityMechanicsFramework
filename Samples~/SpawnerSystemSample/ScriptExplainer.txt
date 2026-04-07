@@ -1,0 +1,190 @@
+====================================================
+SCRIPT: SpawnerSystem_UMFOSS (Spawner System)
+AUTHOR: Satish Rathod
+NAMESPACE: GameplayMechanicsUMFOSS.World
+====================================================
+
+PURPOSE:
+A modular spawner system implementing three spawn patterns — wave-based,
+timed interval, and proximity-triggered — all configured via ScriptableObjects.
+Designed for tower defence, arena games, patrol enemies, ambush encounters,
+and any game requiring dynamic object spawning.
+
+DEPENDENCIES:
+- EventBus (Runtime/Core/EventBus.cs) — decoupled death tracking and spawn events
+- Unity Physics2D — ProximitySpawner OverlapCircle detection
+
+----------------------------------------------------
+
+FILE: SpawnerEvents_UMFOSS.cs
+Contains all event structs and enums used across the spawner system.
+
+Code    : public enum SpawnShape { Point, Circle, Rectangle }
+Explain : Defines three shape types for SpawnPoint randomization. Point spawns
+          at exact position, Circle randomizes within a radius, Rectangle
+          randomizes within a box area.
+
+Code    : public enum SpawnPointMode { Random, Sequential, Nearest, All }
+Explain : Controls how spawn points are selected. Random picks any point,
+          Sequential cycles through them in order, Nearest picks the closest
+          to the player, All spawns at every point simultaneously.
+
+Code    : public enum WaveClearCondition { AllDead, TimedEnd, Manual }
+Explain : Determines when a wave is considered cleared. AllDead waits for all
+          spawned objects to die, TimedEnd clears after a fixed duration,
+          Manual requires an external ClearCurrentWave() call.
+
+Code    : public struct OnSpawnedObjectDied { public GameObject obj; ... }
+Explain : Published when any spawned object dies. Contains the GameObject reference,
+          wave number, and remaining count. This is how spawners track active counts
+          without polling — event-driven, not null-check-driven. Pooled objects are
+          deactivated (not destroyed), so obj != null stays true forever. Events are
+          the only reliable tracking mechanism.
+
+----------------------------------------------------
+
+FILE: SpawnProfile_UMFOSS.cs (ScriptableObject)
+The data layer — defines WHAT spawns without any logic.
+
+Code    : [CreateAssetMenu(fileName = "NewSpawnProfile", menuName = "UMFOSS/World/SpawnProfile")]
+Explain : Registers this ScriptableObject in Unity's Create Asset menu. Designers
+          can create new spawn configurations as assets without touching code.
+
+Code    : public class SpawnEntry { public float weight = 1f; ... }
+Explain : Each entry defines a prefab, min/max count, weight, and spawn delay.
+          Weight controls probability in weighted random selection — higher weight
+          means this entry is selected more often relative to others.
+
+Code    : public SpawnPointMode spawnPointMode = SpawnPointMode.Random;
+Explain : Controls how the spawner selects which SpawnPoint to use. This is set
+          per-profile, not per-spawner, so different waves can use different modes.
+
+Code    : public int maxSimultaneous = 10;
+Explain : Hard cap on active spawned objects. Prevents performance issues from
+          unlimited spawning. Respected by all three spawner types.
+
+Code    : public AnimationCurve countScaleCurve = AnimationCurve.Constant(0f, 1f, 1f);
+Explain : Multiplies spawn counts based on progress (wave number or time elapsed).
+          Default is flat at 1.0 — no scaling. A rising curve makes later waves
+          spawn more enemies. Designers control difficulty ramp without code changes.
+
+----------------------------------------------------
+
+FILE: SpawnPoint_UMFOSS.cs (MonoBehaviour)
+Marks a position in the world where objects can spawn.
+
+Code    : public Vector3 GetSpawnPosition()
+Explain : Returns a position based on the configured shape. Point returns exact
+          transform.position. Circle returns a random point within radius using
+          Random.insideUnitCircle. Rectangle returns a random point within a box
+          defined by size.x and size.y.
+
+Code    : return shape switch { SpawnShape.Circle => ... (Vector3)(Random.insideUnitCircle * radius) ... }
+Explain : Pattern matching switch expression. Random.insideUnitCircle returns a
+          Vector2 inside a unit circle, scaled by radius. Cast to Vector3 because
+          transform.position is Vector3. Result: natural, non-grid-aligned positions.
+
+Code    : private void OnDrawGizmos()
+Explain : Unity callback that draws in Scene view without runtime cost. Makes
+          spawn areas visible to designers without entering Play Mode. Orange
+          wireframe shapes (sphere for Circle, cube for Rectangle, small sphere
+          for Point).
+
+----------------------------------------------------
+
+FILE: SpawnHelper_UMFOSS.cs (Static Utility)
+Shared logic used by all three spawner types.
+
+Code    : public static SpawnEntry SelectWeightedRandom(SpawnEntry[] entries)
+Explain : Weighted random selection algorithm. Steps:
+          1. Sum all weights (e.g., Goblin=5, Archer=3, Knight=1 → total=9)
+          2. Pick random float in [0, 9)
+          3. Walk entries accumulating weight: Goblin owns [0,5), Archer [5,8), Knight [8,9)
+          4. Return the entry whose range contains the random value
+          Result: Goblin spawns ~56% of the time, Archer ~33%, Knight ~11%.
+          This is the standard algorithm used in loot tables and procedural generation.
+
+Code    : float randomValue = Random.Range(0f, totalWeight);
+Explain : Random float in range [0, totalWeight). Each entry "owns" a segment
+          of this range proportional to its weight. Higher weight = larger segment
+          = higher selection probability.
+
+Code    : public static int GetScaledCount(SpawnEntry entry, AnimationCurve curve, float progress)
+Explain : Multiplies the random base count by the curve value at the given progress.
+          progress=0 is wave 1, progress=1 is the last wave. Flat curve at 1.0
+          means no scaling. Rising curve means later waves spawn more enemies.
+
+----------------------------------------------------
+
+FILE: WaveSpawner_UMFOSS.cs (MonoBehaviour)
+Round-based spawning with configurable clear conditions.
+
+Code    : EventBus.Subscribe<OnSpawnedObjectDied>(OnObjectDied);
+Explain : Subscribes to death events in OnEnable to track active count. This is
+          event-driven — zero per-frame cost. Compare to the wrong approach:
+          polling activeCount = spawnedObjects.Count(obj => obj != null) every frame,
+          which also fails with pooled objects since deactivated objects are not null.
+
+Code    : private IEnumerator RunWaves()
+Explain : Master coroutine that loops through all wave profiles. For each wave:
+          runs RunSingleWave, waits timeBetweenWaves, advances. If loopWaves is
+          true, resets to wave 0 after the last wave. Publishes OnAllWavesComplete
+          when all waves are done (and not looping).
+
+Code    : private IEnumerator RunSingleWave(int waveIndex)
+Explain : Spawns all entries for one wave according to the profile, then waits for
+          the clear condition. AllDead waits until activeCount reaches 0. TimedEnd
+          waits a fixed duration. Manual waits for an external ClearCurrentWave() call.
+
+Code    : private IEnumerator WaitUnpaused(float seconds)
+Explain : Custom wait that respects pause state. Unlike WaitForSeconds which always
+          counts real time, this accumulates Time.deltaTime only when isPaused is false.
+          When the game pauses, this timer freezes.
+
+----------------------------------------------------
+
+FILE: TimedSpawner_UMFOSS.cs (MonoBehaviour)
+Interval-based spawning with optional respawn-on-death.
+
+Code    : private IEnumerator SpawnLoop()
+Explain : Infinite loop that spawns one object every spawnInterval seconds while
+          activeCount < maxActive. Publishes OnTimedSpawnCapReached when the cap
+          is hit. Uses WaitUnpaused for pause-aware timing.
+
+Code    : if (respawnOnDeath && isSpawning) StartCoroutine(RespawnAfterDelay());
+Explain : The patrol enemy pattern. When an enemy dies, a replacement spawns after
+          spawnInterval. This maintains a constant enemy count in an area (e.g.,
+          always 3 patrol enemies). respawnOnDeath=false is the limited resource
+          pattern — a fixed number of collectibles that do not replenish.
+
+Code    : public void SetInterval(float seconds)
+Explain : Runtime API for changing spawn interval. Useful for difficulty scaling —
+          reduce interval over time to increase pressure on the player.
+
+----------------------------------------------------
+
+FILE: ProximitySpawner_UMFOSS.cs (MonoBehaviour)
+Trigger-based spawning using Physics2D.OverlapCircle.
+
+Code    : Collider2D hit = Physics2D.OverlapCircle(transform.position, triggerRadius, playerLayer);
+Explain : Uses a physics query instead of OnTriggerEnter2D. Why? OnTriggerEnter
+          requires adding a Collider2D component (set to trigger) to every proximity
+          spawner in the scene. OverlapCircle is a single query — no collider needed.
+          The spawner stays a pure logic component. Also gives explicit control over
+          check frequency via checkInterval (not every physics step).
+
+Code    : if (requireLineOfSight) { ... RaycastHit2D ray = Physics2D.Raycast(...) ... }
+Explain : Optional line-of-sight check. Casts a ray from spawner to player. If the
+          ray hits something other than the player (e.g., a wall), the spawn is
+          blocked. Prevents ambush spawners from triggering through walls.
+
+Code    : if (isOneShot) hasFired = true;
+Explain : One-shot is the dungeon room encounter — walk through a door, enemies
+          spawn once, never again until Enable() is called. isOneShot=false with
+          cooldown is the respawning enemy camp — return after cooldown seconds
+          and the camp is repopulated.
+
+Code    : private void OnDrawGizmos()
+Explain : Draws the trigger radius as a wireframe sphere. Yellow when armed, grey
+          when already fired (one-shot). Visible in Scene view for designers to
+          see detection zones without entering Play Mode.

@@ -184,9 +184,9 @@ EventBus.Subscribe<PlayerJumpedEvent>(e => audioManager.PlayJumpSound());
 | # | Mechanic | Author | Category | Video |
 |---|---|---|---|---|
 | 1 | [MonoSingleton Generic](#1-monosingleton-generic) | Shubham B | Core | — |
-| 2 | [Generic & Scalable Dialogue System](#2-generic--scalable-dialogue-system) | Mayur | Dialogue | [▶ Watch]
+| 2 | [Generic & Scalable Dialogue System](#2-generic--scalable-dialogue-system) | Mayur | Dialogue | [▶ Watch](https://github.com/vijit101/UnityMechanicsFramework/tree/main/RuntimeMechanics/Dailogue/2.%20GenericAndScalableDialogueSystem/Assets/Video%20tutorial) |
 | 64 | [Utils](#64-Utils) | [Shubham ](https://github.com/vijit101) | Core | [▶ Watch]() |
-(https://github.com/vijit101/UnityMechanicsFramework/tree/main/RuntimeMechanics/Dailogue/2.%20GenericAndScalableDialogueSystem/Assets/Video%20tutorial) |
+| 3 | [Spawner System](#3-spawner-system) | [Satish Rathod](https://github.com/satish-rathod) | World / Spawning | [▶ Watch](Samples~/SpawnerSystemSample/Video/SpawnerSystemTutorial.mp4) |
 
 *More mechanics are added with every merged PR. [Contribute yours →](#9-how-to-contribute)*
 
@@ -317,6 +317,48 @@ dialogueSystem.StartDialogue(npcDatabase, onComplete: () =>
 - Clean separation between data (`DialogueDatabase`) and logic (`DialogueSystem`)
 - Add new conversations without touching any existing scripts
 - Scales to large narrative systems without architectural changes
+
+---
+
+### 3. Spawner System
+
+| | |
+|---|---|
+| **Author** | [Satish Rathod](https://github.com/satish-rathod) |
+| **Namespace** | `GameplayMechanicsUMFOSS.World` |
+| **Location** | [`Runtime/World/`](Runtime/World/) |
+| **Category** | World / Spawning |
+| **Demo Scene** | `Samples~/SpawnerSystemSample/Assets/Scenes/DemoScene.unity` |
+| **Video** | [▶ Watch Walkthrough](Samples~/SpawnerSystemSample/Video/SpawnerSystemTutorial.mp4) |
+
+**What it does**
+
+A modular spawner system handling three spawn patterns — wave-based, timed interval, and proximity-triggered — all configured via ScriptableObjects. Drop a spawner on any GameObject, assign a `SpawnProfile` asset, and enemies spawn without writing gameplay code. Used in tower defence, arena games, patrol systems, and ambush encounters.
+
+**How to use it**
+
+```csharp
+using GameplayMechanicsUMFOSS.World;
+
+// WaveSpawner — assign waveProfiles in Inspector, then:
+waveSpawner.StartWaves();
+
+// TimedSpawner — auto-starts if spawnOnStart=true, or:
+timedSpawner.StartSpawning();
+timedSpawner.SetInterval(2f);  // change interval at runtime
+
+// ProximitySpawner — auto-detects player via Physics2D.OverlapCircle
+// Or force-trigger manually:
+proximitySpawner.ForceSpawn();
+```
+
+**Highlights**
+
+- Fully data-driven via `SpawnProfile_UMFOSS` ScriptableObjects — change encounters without code
+- Weighted random selection for natural enemy variety distribution
+- Event-driven active count tracking — reliable with pooled objects
+- Difficulty scaling via AnimationCurve — designer-controlled difficulty curves
+- Three spawner types sharing one data layer — only the trigger mechanism differs
 
 ---
 
