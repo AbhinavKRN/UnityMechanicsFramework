@@ -37,7 +37,7 @@ Build it clean. Build it reusable. Build it for someone else.
 19. [Unity Version & Compatibility](#19-unity-version--compatibility)
 20. [License Agreement](#20-license-agreement)
 21. [Contact & Questions](#21-contact--questions)
-22. [TLDR (#22-TLDR)]
+22. [TLDR](#22-TLDR)
 
 ---
 
