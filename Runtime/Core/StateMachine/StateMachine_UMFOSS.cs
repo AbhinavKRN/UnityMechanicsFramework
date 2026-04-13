@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace GameplayMechanicsUMFOSS.Core
 {
@@ -25,11 +26,25 @@ namespace GameplayMechanicsUMFOSS.Core
         private static readonly List<StateTransition_UMFOSS> EmptyTransitions
             = new List<StateTransition_UMFOSS>(0);
 
+        private readonly StateHistory_UMFOSS history = new StateHistory_UMFOSS();
+        private float stateEnteredTime;
+
+        // the MonoBehaviour that owns this machine — used as event owner identifier
+        private readonly object owner;
+
+        public StateMachine_UMFOSS(object owner = null)
+        {
+            this.owner = owner;
+        }
+
         /// <summary>The state currently running.</summary>
         public IState_UMFOSS CurrentState  => currentState;
 
         /// <summary>The state that was active before the last transition.</summary>
         public IState_UMFOSS PreviousState => previousState;
+
+        /// <summary>Read-only access to state history.</summary>
+        public StateHistory_UMFOSS History => history;
 
         /// <summary>Call from MonoBehaviour.Update(). Checks transitions then ticks current state.</summary>
         public void Tick()
@@ -59,18 +74,45 @@ namespace GameplayMechanicsUMFOSS.Core
             if (newState == currentState)
                 return;
 
+            var previousName = currentState?.GetType().Name ?? string.Empty;
+            var duration     = Time.time - stateEnteredTime;
+
             currentState?.OnExit();
 
-            previousState = currentState;
-            currentState  = newState;
+            EventBus_UMFOSS.Publish(new StateExitedEvent
+            {
+                stateName = previousName,
+                duration  = duration,
+                owner     = owner
+            });
+
+            history.MarkCurrentExited();
+
+            previousState    = currentState;
+            currentState     = newState;
+            stateEnteredTime = Time.time;
 
             transitions.TryGetValue(currentState, out currentTransitions);
             if (currentTransitions == null)
                 currentTransitions = EmptyTransitions;
 
+            history.Record(currentState);
+
             currentState.OnEnter();
 
-            // EventBus.Publish(new StateChangedEvent { ... }); — hooked in by Person 2
+            EventBus_UMFOSS.Publish(new StateEnteredEvent
+            {
+                stateName = currentState.GetType().Name,
+                owner     = owner
+            });
+
+            EventBus_UMFOSS.Publish(new StateChangedEvent
+            {
+                previousStateName = previousName,
+                newStateName      = currentState.GetType().Name,
+                timestamp         = stateEnteredTime,
+                owner             = owner
+            });
         }
 
         /// <summary>Adds a transition from one specific state to another.</summary>
