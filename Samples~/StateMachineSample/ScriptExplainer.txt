@@ -1,0 +1,127 @@
+================================================================
+  ScriptExplainer — StateMachine Sample (Person 3)
+  Namespace: GameplayMechanicsUMFOSS.Core
+  Files: PlayerFSM_UMFOSS.cs, EnemyFSM_UMFOSS.cs, GroundDetector.cs
+================================================================
+
+WHY A STATE MACHINE FOR PLAYER AND ENEMY?
+------------------------------------------
+Without an FSM, player logic looks like:
+
+    if (isGrounded && !isDashing && !isHurt && Input.GetKeyDown(Space)) Jump();
+    if (isDashing && dashTimer > 0) DashMovement();
+    if (isHurt) ApplyKnockback();
+
+Every new state forces you to touch every existing if-block.
+A bug in one state leaks into others because they share raw booleans.
+
+With an FSM, each state is its own class.
+JumpState owns jump logic. DashState owns dash logic.
+Adding HoverState means writing one new class — nothing else changes.
+
+
+WHY STATES ARE NESTED CLASSES
+------------------------------
+States are private nested classes inside PlayerFSM_UMFOSS and EnemyFSM_UMFOSS.
+They are implementation details of their controller — not public types.
+No other system should create or reference a raw IdleState or PatrolState directly.
+Nesting keeps them private and makes the relationship obvious in code.
+
+
+WHY BuildFSM() SEPARATES WIRING FROM LOGIC
+--------------------------------------------
+BuildFSM() defines WHICH states exist and WHEN to move between them.
+The state classes define WHAT to do inside each state.
+These are two different concerns. Separating them means:
+- You can read all transitions in one place (BuildFSM).
+- You can read all state behaviour in one place (the state class).
+- Changing a transition never requires touching state logic.
+
+
+HOW COYOTE TIME WORKS
+----------------------
+Coyote time gives the player a short window to jump after walking off a ledge.
+IdleState counts down coyoteTimer every frame when not grounded.
+Jump transitions check: groundDetector.IsGrounded || coyoteTimer > 0
+So a jump pressed within 0.12s of leaving a platform still works.
+This is a common game-feel technique. The FSM makes it easy — IdleState owns it.
+
+
+WHY DASH DISABLES GRAVITY
+--------------------------
+DashState sets rb.gravityScale = 0 on OnEnter.
+This prevents gravity from pulling the player down during the horizontal dash.
+OnExit re-enables gravity and zeroes velocity so the dash stops cleanly.
+Without the gravity disable, the dash arc would curve downward — which is wrong.
+
+
+WHY HURT AND DEAD USE AddAnyTransition
+----------------------------------------
+A player can be hurt while idle, running, jumping, dashing — any state.
+If we used AddTransition, we'd have to add a hurt transition from every state.
+That's error-prone and brittle. If we forget one, the player can be immortal in that state.
+AddAnyTransition means: no matter what state is active, check this condition first.
+Death and stun always use AddAnyTransition for the same reason.
+
+
+HOW ENEMY PATROL WAYPOINTS WORK
+---------------------------------
+PatrolState keeps a waypointIndex counter.
+Each FixedTick, it moves toward the current waypoint.
+When it arrives (distance < 0.2), it increments the index (wrapping around).
+No Coroutines, no NavMesh — pure velocity-based movement driven by the FSM.
+
+
+HOW ENEMY ALERT STATE WORKS
+-----------------------------
+When the enemy spots the player (enters sightRange), it enters AlertState.
+AlertState counts down alertDurationTimer.
+If the player stays visible, the next transition fires before timer hits zero.
+If the player hides and the timer expires, the enemy returns to patrol.
+This avoids the enemy immediately locking on — it adds believable hesitation.
+
+
+HOW ENEMY STUN STATE RETURNS TO PATROL
+----------------------------------------
+StunnedState counts down stunnedTimer.
+When it expires, it calls fsm.ChangeState(new PatrolState(this)) directly.
+This is safe because Tick() is not mid-execution at that point.
+We reset stunnedFlag in OnExit so the AnyTransition does not immediately re-trigger.
+
+
+COMMON MISTAKES EXPLAINED
+--------------------------
+1. Calling ChangeState from OnEnter — causes re-entrant transitions, unpredictable order.
+   Use a flag set in OnEnter and let Tick() handle the next transition.
+
+2. Storing config values in state classes — stale data if owner changes them mid-state.
+   All config lives on the MonoBehaviour owner (moveSpeed, jumpForce etc).
+   States read from owner, never store their own copy.
+
+3. Forgetting to reset flags — hurtFlag stays true after hurt state ends.
+   HurtState.OnExit resets hurtFlag so the AnyTransition stops firing.
+   StunnedState.OnExit resets stunnedFlag for the same reason.
+
+4. Forgetting anyTransitions are checked BEFORE per-state transitions.
+   This is why dead/stun work from any state — they have priority.
+
+
+DEMO SCENE SETUP
+-----------------
+Player:
+  - Rigidbody2D (Freeze Z rotation)
+  - SpriteRenderer
+  - Collider2D
+  - GroundDetector (set Ground layer mask)
+  - PlayerFSM_UMFOSS
+  - StateMachineDebugger_UMFOSS
+
+Enemy:
+  - Rigidbody2D (Freeze Z rotation)
+  - SpriteRenderer
+  - Collider2D
+  - EnemyFSM_UMFOSS (assign waypoints, tag player as "Player")
+  - StateMachineDebugger_UMFOSS
+
+Both debuggers show state names in Inspector and Scene view in real time.
+================================================================
