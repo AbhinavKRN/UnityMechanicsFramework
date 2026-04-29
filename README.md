@@ -325,12 +325,13 @@ dialogueSystem.StartDialogue(npcDatabase, onComplete: () =>
 
 | | |
 |---|---|
-| **Author** | [AbhinavKRN](https://github.com/AbhinavKRN) |
+| **Author** | [AbhinavKRN](https://github.com/AbhinavKRN), [Archisman](https://github.com/Om-Midya), [Abhinav Jha](https://github.com/abhinavjha0239) |
 | **Namespace** | `GameplayMechanicsUMFOSS.Core` |
-| **Location** | `Runtime/Core/StateMachine/StateMachine_UMFOSS.cs` |
+| **Location** | `Runtime/Core/StateMachine/Scripts/` |
+| **Script Explainers** | `Runtime/Core/StateMachine/Script_Explainers/` (one per script) |
 | **Category** | Core |
-| **Demo Scene** | `Samples~/StateMachineSample/Assets/Scenes/DemoScene.unity` |
-| **Video** | [▶ Watch Walkthrough](Samples~/StateMachineSample/Video/StateMachineTutorial.mp4) |
+| **Demo Project** | `Samples~/StateMachineSample/StateMachineSample.zip` (extract → `Assets/Scenes/DemoScene.unity`) |
+| **Video** | [▶ Watch Walkthrough](Samples~/StateMachineSample/Video/StateMachineTutorial.mp4) — also zipped at `Samples~/StateMachineSample/Video/StateMachineTutorial.zip` |
 
 **What it does**
 
