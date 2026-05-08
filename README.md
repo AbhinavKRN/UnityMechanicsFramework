@@ -185,6 +185,9 @@ EventBus.Subscribe<PlayerJumpedEvent>(e => audioManager.PlayJumpSound());
 |---|---|---|---|---|
 | 1 | [MonoSingleton Generic](#1-monosingleton-generic) | Shubham B | Core | — |
 | 2 | [Generic & Scalable Dialogue System](#2-generic--scalable-dialogue-system) | Mayur | Dialogue | [▶ Watch](https://github.com/vijit101/UnityMechanicsFramework/tree/main/RuntimeMechanics/Dailogue/2.%20GenericAndScalableDialogueSystem/Assets/Video%20tutorial) |
+| 3 | [Spawner System](#3-spawner-system) | [Satish Rathod](https://github.com/satish-rathod) | World / Spawning | [▶ Watch](Sample/SpawnerSystem/SpawnerSystemVideos.zip) |
+| 4 | [Scene Manager System](#4-scene-manager-system) | [Nymish](https://github.com/nymishkash) | Systems | [▶ Watch](Samples~/SceneManagerSample/SceneManagerVideos.zip) |
+| 5 | [Modular Jump System](#5-modular-jump-system) | [Ankur Kalita](https://github.com/ankur-kalita) | Movement | [▶ Watch](./Samples~/JumpSystemSample/Video/ModularJumpImpl.mp4.zip) |
 | 23 | [Currency System](#23-currency-system) | [Aayush Khopade](https://github.com/aayushashokkhopade) [Krishna Patidar](https://github.com/krishna-p060) | Systems / Economy | [▶ Watch](https://www.loom.com/share/01de26ff40114577a2aff1fce3f39ec2) |
 | 64 | [Utils](#64-Utils) | [Shubham](https://github.com/vijit101) | Core | [▶ Watch]() |
 | 1 | [MonoSingleton Generic](#1-monosingleton-generic) | Shubham B | Core | (https://github.com/vijit101/UnityMechanicsFramework/tree/main/RuntimeMechanics/Dailogue/2.%20GenericAndScalableDialogueSystem/Assets/Video%20tutorial) |
@@ -194,9 +197,7 @@ EventBus.Subscribe<PlayerJumpedEvent>(e => audioManager.PlayJumpSound());
 | 64 | [Utils](#64-Utils) | [Shubham ](https://github.com/vijit101) | Core | [▶ Watch]() |
 
 | 6 | [Screen Shake System](#6-screen-shake-system) | [Paramjeet Kaur](https://github.com/kauxp) | Systems | [▶ Watch](Samples~/ScreenShakeExample/Video/ScreenShakeTutorial.mp4) |
-(https://github.com/vijit101/UnityMechanicsFramework/tree/main/RuntimeMechanics/Dailogue/2.%20GenericAndScalableDialogueSystem/Assets/Video%20tutorial) |
-| 3 | [Scene Manager System](#3-scene-manager-system) | [Nymish](https://github.com/nymishkash) | Systems | [▶ Watch](Samples~/SceneManagerSample/SceneManagerVideos.zip) |
-|
+| 64 | [Utils](#64-Utils) | [Shubham ](https://github.com/vijit101) | Core | [▶ Watch]() |
 
 *More mechanics are added with every merged PR. [Contribute yours →](#9-how-to-contribute)*
 
@@ -386,6 +387,50 @@ dialogueSystem.StartDialogue(npcDatabase, onComplete: () =>
 
 ---
 
+### 3. Spawner System
+
+| | |
+|---|---|
+| **Author** | [Satish Rathod](https://github.com/satish-rathod) |
+| **Namespace** | `GameplayMechanicsUMFOSS.World` |
+| **Location** | [`Runtime/Mechanic/SpawnerSystem/Scripts/`](Runtime/Mechanic/SpawnerSystem/Scripts/) |
+| **Script Explainers** | [`Runtime/Mechanic/SpawnerSystem/Script_Explainers/`](Runtime/Mechanic/SpawnerSystem/Script_Explainers/) (one per script) |
+| **Category** | World / Spawning |
+| **Sample Project** | [`Sample/SpawnerSystem/SpawnerSystem.zip`](Sample/SpawnerSystem/SpawnerSystem.zip) (extract & open in Unity) |
+| **Videos** | [`Sample/SpawnerSystem/SpawnerSystemVideos.zip`](Sample/SpawnerSystem/SpawnerSystemVideos.zip) (Demo + Detailed walkthrough) |
+
+**What it does**
+
+A modular spawner system handling three spawn patterns — wave-based, timed interval, and proximity-triggered — all configured via ScriptableObjects. Drop a spawner on any GameObject, assign a `SpawnProfile` asset, and enemies spawn without writing gameplay code. Used in tower defence, arena games, patrol systems, and ambush encounters.
+
+**How to use it**
+
+```csharp
+using GameplayMechanicsUMFOSS.World;
+
+// WaveSpawner — assign waveProfiles in Inspector, then:
+waveSpawner.StartWaves();
+
+// TimedSpawner — auto-starts if spawnOnStart=true, or:
+timedSpawner.StartSpawning();
+timedSpawner.SetInterval(2f);  // change interval at runtime
+
+// ProximitySpawner — auto-detects player via Physics2D.OverlapCircle
+// Or force-trigger manually:
+proximitySpawner.ForceSpawn();
+```
+
+**Highlights**
+
+- Fully data-driven via `SpawnProfile_UMFOSS` ScriptableObjects — change encounters without code
+- Weighted random selection for natural enemy variety distribution
+- Event-driven active count tracking — reliable with pooled objects
+- Difficulty scaling via AnimationCurve — designer-controlled difficulty curves
+- Three spawner types sharing one data layer — only the trigger mechanism differs
+
+---
+
+### 4. Scene Manager System
 ### 23. Currency System
 
 | | |
@@ -415,21 +460,6 @@ A centralised, ScriptableObject-configured currency manager that tracks multiple
 **What it does**
 
 A centralized async scene management system that solves four real-world problems with Unity's built-in `SceneManager`: main-thread blocking on load, singleton destruction across scene changes, missing fade transitions, and zero support for additive overlay scenes (pause menus, inventory, settings). Ships with a persistent-scene pattern that keeps your singletons alive across every load, fade transitions as ScriptableObject assets, an auto-created fade canvas (zero manual UI setup), a stack-based push/pop API for overlays, and a full EventBus integration so any other system can react to scene transitions without holding a direct reference.
-### 3. Modular Jump System
-
-| | |
-|---|---|
-| **Author** | [Ankur Kalita](https://github.com/ankur-kalita) |
-| **Namespace** | `GameplayMechanicsUMFOSS.Movement` / `GameplayMechanicsUMFOSS.Physics` |
-| **Location** | `Runtime/Mechanic/ModularJumpSystem/Scripts/` |
-| **Script Explainers** | `Runtime/Mechanic/ModularJumpSystem/Script_Explainers/` |
-| **Category** | Movement |
-| **Demo Scene** | Included in `Samples~/JumpSystemSample/JumpSystemProjectZip.zip` |
-| **Video** | [▶ Watch Walkthrough](./Samples~/JumpSystemSample/Video/ModularJumpImpl.mp4.zip) |
-
-**What it does**
-
-A fully modular, configurable jump system supporting both 2D and 3D physics via the adapter pattern. Drop it onto any GameObject, pick a dimension mode, and get multi-jump, coyote time, jump buffering, variable jump height, and tunable gravity — all from the Inspector.
 
 **How to use it**
 
@@ -467,6 +497,38 @@ SceneManager_UMFOSS.Instance.Pop(); // close it
 // Step 4: React to scene events from anywhere via the EventBus
 EventBus.Subscribe<SceneLoadCompleteEvent>(e => Debug.Log($"Loaded {e.sceneName}"));
 EventBus.Subscribe<SceneLoadProgressEvent>(e => loadingBar.fillAmount = e.progress);
+```
+
+**Highlights**
+
+- **Async-first** — `LoadSceneMode.Additive` + `allowSceneActivation = false` until 90% means no main-thread freeze and no half-loaded flashes
+- **Persistent scene pattern** — your `AudioManager`, `SaveSystem`, and HUD singletons survive every transition without scattered `DontDestroyOnLoad` calls
+- **Auto-created fade canvas** — drop the prefab in any scene, call `LoadScene`, fades just work; zero inspector wiring required
+- **Push / Pop scene stacking** — pause menus, inventory, settings overlays additively load on top of gameplay without unloading the world beneath
+- **Seven EventBus events fire across the load lifecycle** — `SceneLoadStart`, `SceneLoadProgress`, `SceneLoadComplete`, `ScenePushed`, `ScenePopped`, `SceneReloaded`, `InputLock` — every other mechanic can hook in without coupling
+- **Ships with a full SLITHER snake game demo** — three levels, pause/stats overlays, game-over and victory screens — proving every API surface in a real game flow
+
+---
+
+### 5. Modular Jump System
+
+| | |
+|---|---|
+| **Author** | [Ankur Kalita](https://github.com/ankur-kalita) |
+| **Namespace** | `GameplayMechanicsUMFOSS.Movement` / `GameplayMechanicsUMFOSS.Physics` |
+| **Location** | `Runtime/Mechanic/ModularJumpSystem/Scripts/` |
+| **Script Explainers** | `Runtime/Mechanic/ModularJumpSystem/Script_Explainers/` |
+| **Category** | Movement |
+| **Demo Scene** | Included in `Samples~/JumpSystemSample/JumpSystemProjectZip.zip` |
+| **Video** | [▶ Watch Walkthrough](./Samples~/JumpSystemSample/Video/ModularJumpImpl.mp4.zip) |
+
+**What it does**
+
+A fully modular, configurable jump system supporting both 2D and 3D physics via the adapter pattern. Drop it onto any GameObject, pick a dimension mode, and get multi-jump, coyote time, jump buffering, variable jump height, and tunable gravity — all from the Inspector.
+
+**How to use it**
+
+```csharp
 using GameplayMechanicsUMFOSS.Movement;
 
 // Step 1: Add ModularJumpSystem_UMFOSS component to your player
